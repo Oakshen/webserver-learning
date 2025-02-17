@@ -19,6 +19,8 @@
 #include <sys/socket.h>
 #include <type_traits>
 #include <unistd.h>
+#include <netinet/tcp.h>
+#include <fcntl.h>
 using namespace std;
 
 // struct epoll_event {
@@ -35,6 +37,10 @@ using namespace std;
 
 // 初始化服务器(先定义)
 int initserver(int port);
+
+void setnonblocking(int fd){
+    fcntl(fd, F_SETFL,fcntl(fd, F_GETFL)|O_NONBLOCK);
+}
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
@@ -55,7 +61,7 @@ int main(int argc, char *argv[]) {
 
   epoll_event evs[10]; // 存放 epoll 返回的事件
 
-  while (true) {
+  while (true) {//事件循环
     int infds = epoll_wait(epollfd, evs, 10, -1);
     // 如果 infds 小于 0，说明失败
     if (infds < 0) {
@@ -92,6 +98,7 @@ int main(int argc, char *argv[]) {
             close(evs[ii].data.fd);
           } else {
             cout << "buffer" << endl;
+            //recv(evs[ii].data.fd, buffer, sizeof(buffer), 0);
             send(evs[ii].data.fd, buffer, sizeof(buffer), 0);
           }
         }
