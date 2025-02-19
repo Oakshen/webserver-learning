@@ -113,6 +113,7 @@ int main(int argc,char *argv[]){
                         bzero(&buffer, sizeof(buffer));//将指定内存区域置为 0
                         ssize_t nread=read(evs[ii].data.fd,buffer,sizeof(buffer));
                         if(nread>0){
+                            cout<<"接收到："<<buffer<<endl;
                             send(evs[ii].data.fd, buffer, strlen(buffer), 0);
                         }else if(nread==-1 && errno==EINTR) {//读取数据时信号中断，继续读取
                             continue;
@@ -120,15 +121,17 @@ int main(int argc,char *argv[]){
                             break;
                         }else if (nread==0) {//客户端连接已断开
                             cout<<"client disconnect"<<endl;
-                            
+                            close(evs[ii].data.fd);
+                            break; 
                         }
                     }
                 }  
                 else if(evs[ii].events & EPOLLOUT){//有数据需要写
 
                 }          
-                else{
-
+                else{//其他事件，都视为错误
+                    cout<<"client error"<<endl;
+                    close(evs[ii].data.fd);
                 }
                 
             }
