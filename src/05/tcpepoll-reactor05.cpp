@@ -42,40 +42,7 @@ int main(int argc, char *argv[]) {
     cout << "usage:./tcpepoll-reactor ip port" << endl;
     return -1;
   }
-  //  创建服务端用于监听的 listenfd
-  // int listenfd =
-  //     socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK,
-  //            IPPROTO_TCP); // SOCK_NONBLOCK表示将 listenfd 设置成非阻塞
-  // if (listenfd < 0) {
-  //   perror("listenfd failed:");
-  //   return -1;
-  // }
-
-  // int opt = 1;
-  // setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt,
-  //            static_cast<socklen_t>(sizeof opt)); // 允许地址重用
-  // setsockopt(
-  //     listenfd, SOL_SOCKET, TCP_NODELAY, &opt,
-  //     static_cast<socklen_t>(sizeof opt)); // 关闭 Nagle 算法（可能会引用延迟）
-  // setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT, &opt,
-  //            static_cast<socklen_t>(
-  //                sizeof opt)); // 允许多个 socket 绑定到同一个 ip 地址或者端口
-  // setsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &opt,
-  //            static_cast<socklen_t>(sizeof opt)); // 启用 TCP 保活机制
-
-  // 采用封装头文件配置 ip 地址
-  // InetAddress servaddr(argv[1],atoi(argv[2]));
-
-  // if (bind(listenfd, servaddr.addr(), sizeof(servaddr)) < 0) {
-  //   perror("bind failed:");
-  //   close(listenfd);
-  //   return -1;
-  // }
-  // if (listen(listenfd, 128) != 0) {
-  //   perror("bind() failed");
-  //   close(listenfd);
-  //   return -1;
-  // }
+  
   Socket servsock(createnonblocking());
   InetAddress servaddr(argv[1],atoi(argv[2]));
   servsock.setkeepalive(true);
@@ -87,17 +54,14 @@ int main(int argc, char *argv[]) {
 
   int epollfd = epoll_create(1); // 创建 epoll 句柄
   epoll_event ev;                // 声明事件的数据结构
-  ev.data.fd =
-      servsock.fd(); // 指定事件的自定义数据，会随着 epoll_wait()返回的时间一并返回
+  ev.data.fd =servsock.fd(); // 指定事件的自定义数据，会随着 epoll_wait()返回的时间一并返回
   ev.events = EPOLLIN; // 让 epoll 监视 listenfd 的读事件，采用水平触发
-
-  epoll_ctl(epollfd, EPOLL_CTL_ADD, servsock.fd(),
-            &ev);      // 将 listenfd 添加到 epoll实例中
+  
+  epoll_ctl(epollfd, EPOLL_CTL_ADD, servsock.fd(),&ev);      // 将 listenfd 添加到 epoll实例中
   epoll_event evs[10]; // 存放 epoll_wait() 返回事件的数组
 
   while (true) {
-    int infds = epoll_wait(epollfd, evs, 10,
-                           -1); // 等待 epoll 实例中注册的文件描述符上发生的事件
+    int infds = epoll_wait(epollfd, evs, 10,-1); // 等待 epoll 实例中注册的文件描述符上发生的事件
     // infds 返回发生事件的 socket 数量
     if (infds < 0) {
       perror("epoll_wait() failed");
@@ -117,13 +81,6 @@ int main(int argc, char *argv[]) {
       } else if (evs[ii].events &(EPOLLIN | EPOLLPRI)) { // 接受缓冲区中有数据可以读
         if (evs[ii].data.fd ==servsock.fd()) { // listenfd 有事件，表示有新客户端连接上来
 
-          // struct sockaddr_in peeraddr;
-          // socklen_t len = sizeof(peeraddr);
-          // int clientfd = accept4(servsock.fd(), (struct sockaddr *)&peeraddr, &len, SOCK_NONBLOCK); // ! 注意最后一个参数是 &len
-          // ! 因为 accept(···, ···, socklen_t *addrlen);最后一个参数是指针
-          // setnonblocking(clientfd);   //客户端连接的 clientfd
-          // 必须设置为非阻塞
-          
           InetAddress clientaddr;
           Socket *clientsock=new Socket(servsock.accept(clientaddr));
           //创建一个指向socket的指针
